@@ -15,18 +15,16 @@ app.use(express.static("public")); // Sert index.html depuis ./public
 
 // Génère la signature sécurisée pour l’API
 function generateSignature(appid, env, uri) {
-  const auth_signature_method = "HMAC-SHA1";
-  const auth_consumer_key = encodeURIComponent(hmacsha1(appid, env));
-  const auth_token = uuid.v4();
-  const uri_path = uri.replace(/^https?:\/\/[^/]+/, "");
-  const auth_signature = encodeURIComponent(
-    hmacsha1(appid, uri_path + auth_token)
-  );
-  const auth_nonce = encodeURIComponent(hmacsha1(appid, uuid.v4()));
-  const auth_callback = encodeURIComponent(uri_path);
-  const auth_timestamp = new Date().getTime();
+  auth_signature_method = 'HMAC-SHA1';
+  auth_consumer_key = encodeURIComponent(hmacsha1(appid, env));
+  auth_token = uuid.v4();
+  uri_path = uri.replace(new RegExp('http(s)?://[^/]*'), '')
+  auth_signature = encodeURIComponent(hmacsha1(appid, uri_path + auth_token));
+  auth_nonce = encodeURIComponent(hmacsha1(appid, uuid.v4()));
+  auth_callback = encodeURIComponent(uri_path);
+  auth_timestamp = new Date().getTime();
 
-  return `?auth_signature=${auth_signature}&auth_nonce=${auth_nonce}&auth_callback=${auth_callback}&auth_timestamp=${auth_timestamp}&auth_token=${auth_token}&auth_signature_method=${auth_signature_method}&auth_consumer_key=${auth_consumer_key}`;
+  return `Auth ?auth_signature=${auth_signature}&auth_nonce=${auth_nonce}&auth_callback=${auth_callback}&auth_timestamp=${auth_timestamp}&auth_token=${auth_token}&auth_signature_method=${auth_signature_method}&auth_consumer_key=${auth_consumer_key}`;
 }
 
 // Route intermédiaire entre index.html et API Uprodit
@@ -35,20 +33,18 @@ app.get("/api/profiles", async (req, res) => {
   const params = "?startIndex=0&maxResults=50";
   const fullUrl = baseUrl + params;
   const signature = generateSignature(appid, env, fullUrl);
-  const finalUrl = fullUrl + "&" + signature.substring(1);
 
-  console.log("🔗 Final URL:", finalUrl);
+  console.log("🔗 Final URL: " + fullUrl);
 
   try {
-    const response = await fetch(finalUrl, {
+    const response = await fetch(fullUrl, {
       headers: {
-        "x-uprodit-appid": appid,
+        "Authorization": signature,
       },
     });
 
     if (!response.ok) {
-      const text = await response.text();
-      console.error("❌ Uprodit API error:", text);
+      console.error("❌ Uprodit API error: "  + response.status);
       return res.status(response.status).send(text);
     }
 
