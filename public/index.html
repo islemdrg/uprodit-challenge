@@ -150,6 +150,22 @@
       font-size: 14px;
       color: #475569;
     }
+   .profile-card {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px;
+    background-color: #f9f9f9;
+}
+
+.stars-label {
+    color: gold; /* Couleur de l'étoile */
+    font-weight: bold; /* Texte en gras */
+    font-size: 20px; /* Taille de l'étoile */
+}
+
+
+
 
     .loader {
       text-align: center;
@@ -213,48 +229,68 @@
       &copy; 2025 Uprodit | islem darghouth  | <a href="https://doc.uprodit.com/docs/challenge/" style="color: #60a5fa;">uprodit challenge</a>
     </div>
   </div>
+<script>
+  const uri = "https://api.uprodit.com/v1/search/all?startIndex=0&maxResults=10&usecase=perso";
 
-  <script>
-    lucide.createIcons();
+  fetch("https://api.uprodit.com/v1/authheader", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      appid: "challenge_uprodit",
+      env: "production",
+      uri: uri
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    const authorization = data.authorization;
+
+    return fetch(uri, {
+      method: "GET",
+      headers: {
+        "Authorization": authorization
+      }
+    });
+  })
+  .then(response => response.json())
+  .then(json => {
+    console.log("Résultat brut API :", json); // Debug ici
 
     const container = document.getElementById("profiles");
-    const searchInput = document.getElementById("search");
 
-    fetch("/api/profiles")
-      .then(res => res.json())
-      .then(data => {
-        if (!Array.isArray(data) || data.length === 0) {
-          container.innerHTML = "<p>Aucun profil trouvé.</p>";
-          return;
-        }
-
-        renderProfiles(data);
-
-        searchInput.addEventListener("input", () => {
-          const filtered = data.filter(profile =>
-            Object.values(profile).some(value =>
-              value?.toString().toLowerCase().includes(searchInput.value.toLowerCase())
-            )
-          );
-          renderProfiles(filtered);
-        });
-      })
-      .catch(err => {
-        console.error("Erreur de chargement des profils:", err);
-        container.innerHTML = "<p>Erreur de chargement des profils.</p>";
-      });
-
-    function renderProfiles(profiles) {
-      container.innerHTML = profiles.map((profile, index) => `
-        <div class="profile-card" style="animation-delay: ${index * 50}ms">
-          <h3>${profile.firstname || "Prénom inconnu"} ${profile.lastname || ""}</h3>
-          <p><strong>Email:</strong> ${profile.email || "—"}</p>
-          <p><strong>ID:</strong> ${profile.id || "—"}</p>
-          <p><strong>Nom complet:</strong> ${profile.fullname || `${profile.firstname || ""} ${profile.lastname || ""}`}</p>
-        </div>
-      `).join("");
+    // Vérifiez si json est un tableau et s'il contient des éléments
+    if (!Array.isArray(json) || json.length === 0) {
+        container.innerHTML = "<p style='color: red;'>Aucun résultat trouvé dans les données.</p>";
+        return;
     }
-  </script>
+
+    // Vider le conteneur avant d'ajouter des profils
+    container.innerHTML = ""; 
+
+    json.forEach(profile => {
+        // Assurez-vous que les champs existent
+        const specialties = profile?.specialities ?? "Spécialités non renseignées"; // Champ spécialités
+        const starsNumber = profile?.stars_count ?? 0; // Champ nombre d'étoiles, par défaut à 0
+
+        const card = document.createElement("div");
+        card.className = "profile-card"; // Utilisez la classe correcte
+        card.innerHTML = `
+            <h3>${profile.denomination}</h3>
+            <p><strong>Spécialisé(e) en :</strong> ${specialties}</p>
+            <p><span class="stars-label">★ ${starsNumber}</span></p>
+        `;
+        container.appendChild(card);
+    });
+  })
+  .catch(error => {
+    console.error("Erreur :", error);
+    document.getElementById("profiles").innerHTML =
+      "<p style='color: red;'>Impossible de charger les profils.</p>";
+  });
+</script>
+
 
 </body>
 </html>
